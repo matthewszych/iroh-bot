@@ -19,7 +19,5 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/dist dist/
-COPY --from=build /app/knexfile.ts ./
-COPY src/db/migrations src/db/migrations/
 
 CMD ["sh", "-c", "node dist/deploy-commands.js && node dist/bot.js"]
