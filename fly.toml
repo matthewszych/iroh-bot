@@ -3,16 +3,23 @@ primary_region = 'iad'
 
 [build]
 
+[deploy]
+  release_command = 'node dist/deploy-commands.js'
+
 [env]
   NODE_ENV = 'production'
   LOG_LEVEL = 'info'
 
 [processes]
-  app = 'sh -c "node dist/deploy-commands.js && node dist/bot.js"'
+  app = 'node dist/bot.js'
 
 [[vm]]
-  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
+  memory = '512mb'
   processes = ['app']
-  min_machines_running = 1
+
+[[restart]]
+  policy = 'always'
+  retries = 5
+  processes = ['app']
