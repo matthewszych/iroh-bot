@@ -163,3 +163,69 @@ iroh-bot/
 ├── .env.example               — Environment template
 └── package.json
 ```
+
+## Deployment (DigitalOcean VPS)
+
+### Prerequisites
+
+- A DigitalOcean droplet (Ubuntu 24.04, $6/mo works fine)
+- SSH key access to the droplet
+- A remote PostgreSQL database (e.g., [Neon](https://neon.tech))
+
+### Deploy
+
+```bash
+# 1. SSH into your droplet
+ssh -i ~/.ssh/your-key root@YOUR_DROPLET_IP
+
+# 2. Install Docker (first time only)
+curl -fsSL https://get.docker.com | sh
+
+# 3. Clone the repo (first time only)
+git clone https://github.com/matthewszych/iroh-bot.git
+cd iroh-bot
+
+# 4. Create .env.prod
+cat > .env.prod << 'EOF'
+DISCORD_TOKEN=your_token
+CLIENT_ID=your_client_id
+DATABASE_URL=your_postgres_connection_string
+ENABLE_AI=false
+LOG_LEVEL=info
+NODE_ENV=production
+EOF
+
+# 5. (Optional) Add YouTube cookies for music
+# Export from Firefox using cookies.txt extension, then upload:
+# scp -i ~/.ssh/your-key cookies.txt root@YOUR_DROPLET_IP:~/iroh-bot/cookies.txt
+
+# 6. Build and run
+docker build -t iroh-bot .
+docker run -d --restart unless-stopped --env-file .env.prod --name iroh-bot iroh-bot
+
+# 7. Check logs
+docker logs -f iroh-bot
+```
+
+### Redeploy (after code changes)
+
+```bash
+cd ~/iroh-bot
+git pull
+docker stop iroh-bot && docker rm iroh-bot
+docker build -t iroh-bot .
+docker run -d --restart unless-stopped --env-file .env.prod --name iroh-bot iroh-bot
+```
+
+### YouTube Music Notes
+
+YouTube blocks requests from datacenter IPs. To enable `/play`:
+
+1. Open Firefox (not Chrome) → sign into YouTube
+2. Install [cookies.txt extension](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+3. Export cookies for youtube.com
+4. Upload `cookies.txt` to the repo directory on the droplet
+5. Rebuild the Docker image
+6. **Do not open YouTube in Firefox again** (prevents cookie rotation)
+
+Cookies will eventually expire — re-export when music stops working.

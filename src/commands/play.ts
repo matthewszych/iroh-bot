@@ -23,14 +23,6 @@ export const playCmd: Command = {
     await interaction.deferReply();
 
     const query = interaction.options.getString('query', true);
-    const track = await music.searchTrack(query);
-
-    if (!track) {
-      await interaction.editReply('I could not find that song. Perhaps try a different search?');
-      return;
-    }
-
-    track.requestedBy = interaction.user.username;
 
     let queue = music.getQueue(interaction.guildId!);
     if (!queue) {
@@ -42,6 +34,40 @@ export const playCmd: Command = {
     }
 
     queue.textChannel = interaction.channel as TextChannel;
+
+    if (music.isPlaylistUrl(query)) {
+      const tracks = await music.searchPlaylist(query);
+      if (tracks.length === 0) {
+        await interaction.editReply('Could not load any tracks from that playlist.');
+        return;
+      }
+
+      for (const t of tracks) t.requestedBy = interaction.user.username;
+
+      const isPlaying = queue.playing && queue.player.state.status !== AudioPlayerStatus.Idle;
+      if (!isPlaying) {
+        const first = tracks.shift()!;
+        await music.playTrack(interaction.guildId!, first);
+      }
+      queue.tracks.push(...tracks);
+
+      const embed = new EmbedBuilder()
+        .setColor(0x8b4513)
+        .setTitle('📋 Playlist Queued')
+        .setDescription(`Added **${tracks.length + (isPlaying ? 0 : 1)}** tracks to the queue.`)
+        .setFooter({ text: 'Patience brings all things in time.' });
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    const track = await music.searchTrack(query);
+
+    if (!track) {
+      await interaction.editReply('I could not find that song. Perhaps try a different search?');
+      return;
+    }
+
+    track.requestedBy = interaction.user.username;
 
     const isPlaying = queue.playing && queue.player.state.status !== AudioPlayerStatus.Idle;
 

@@ -36,9 +36,12 @@ export interface GuildQueue {
   textChannel: TextChannel | null;
   loop: 'off' | 'track' | 'queue';
   playing: boolean;
+  idleTimeout: ReturnType<typeof setTimeout> | null;
 }
 
 const queues = new Map<string, GuildQueue>();
+
+const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 
 export function getQueue(guildId: string): GuildQueue | undefined {
   return queues.get(guildId);
@@ -54,6 +57,7 @@ export function createQueue(guildId: string): GuildQueue {
     textChannel: null,
     loop: 'off',
     playing: false,
+    idleTimeout: null,
   };
 
   player.on(AudioPlayerStatus.Idle, () => {
@@ -72,6 +76,7 @@ export function createQueue(guildId: string): GuildQueue {
 export function destroyQueue(guildId: string): void {
   const queue = queues.get(guildId);
   if (queue) {
+    if (queue.idleTimeout) clearTimeout(queue.idleTimeout);
     queue.player.stop(true);
     queue.connection?.destroy();
     queues.delete(guildId);
@@ -118,9 +123,48 @@ export async function searchTrack(query: string): Promise<Track | null> {
   }
 }
 
+export function isPlaylistUrl(url: string): boolean {
+  return url.includes('list=') && (url.includes('youtube.com') || url.includes('youtu.be'));
+}
+
+export async function searchPlaylist(url: string): Promise<Track[]> {
+  try {
+    const authArgs = ['--cookies', COOKIES_PATH];
+    const args = [url, '--dump-json', '--flat-playlist', '--yes-playlist', ...authArgs];
+
+    const { stdout } = await execFileAsync(YT_DLP, args, { maxBuffer: 10 * 1024 * 1024 });
+    const lines = stdout.trim().split('\n');
+
+    const tracks: Track[] = [];
+    for (const line of lines) {
+      try {
+        const info = JSON.parse(line);
+        tracks.push({
+          title: info.title ?? 'Unknown',
+          url: info.url ?? info.webpage_url ?? `https://www.youtube.com/watch?v=${info.id}`,
+          duration: info.duration_string ?? '0:00',
+          thumbnail: info.thumbnail ?? info.thumbnails?.[0]?.url ?? '',
+          requestedBy: '',
+        });
+      } catch {
+        continue;
+      }
+    }
+    return tracks;
+  } catch (error) {
+    logger.error({ err: error, url }, 'yt-dlp playlist fetch failed');
+    return [];
+  }
+}
+
 export async function playTrack(guildId: string, track: Track): Promise<void> {
   const queue = queues.get(guildId);
   if (!queue || !queue.connection) return;
+
+  if (queue.idleTimeout) {
+    clearTimeout(queue.idleTimeout);
+    queue.idleTimeout = null;
+  }
 
   const authArgs = ['--cookies', COOKIES_PATH];
   const ytdlp = spawn(YT_DLP, [track.url, '-f', 'bestaudio', '-o', '-', '--no-playlist', '--quiet', ...authArgs]);
@@ -167,6 +211,10 @@ function handleTrackEnd(guildId: string): void {
   } else {
     queue.current = null;
     queue.playing = false;
+    queue.idleTimeout = setTimeout(() => {
+      logger.info({ guildId }, 'Idle timeout reached, leaving voice channel');
+      destroyQueue(guildId);
+    }, IDLE_TIMEOUT_MS);
   }
 }
 
