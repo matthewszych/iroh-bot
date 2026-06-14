@@ -7,7 +7,12 @@ primary_region = 'iad'
   NODE_ENV = 'production'
   LOG_LEVEL = 'info'
 
-[vm]
+[processes]
+  app = 'sh -c "node dist/deploy-commands.js && node dist/bot.js"'
+
+[[vm]]
   memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
+  processes = ['app']
+  min_machines_running = 1
