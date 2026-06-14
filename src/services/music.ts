@@ -18,6 +18,7 @@ import { logger } from '../shared/logger';
 const execFileAsync = promisify(execFile);
 
 const YT_DLP = process.env.YT_DLP_PATH || 'yt-dlp';
+const COOKIES_PATH = process.env.YT_COOKIES_PATH || '/app/cookies.txt';
 
 export interface Track {
   title: string;
@@ -96,9 +97,10 @@ export async function connectToChannel(channel: VoiceBasedChannel): Promise<Voic
 export async function searchTrack(query: string): Promise<Track | null> {
   try {
     const isUrl = query.startsWith('http://') || query.startsWith('https://');
+    const cookieArgs = COOKIES_PATH ? ['--cookies', COOKIES_PATH] : [];
     const args = isUrl
-      ? [query, '--dump-json', '--no-playlist']
-      : [`ytsearch1:${query}`, '--dump-json', '--no-playlist'];
+      ? [query, '--dump-json', '--no-playlist', ...cookieArgs]
+      : [`ytsearch1:${query}`, '--dump-json', '--no-playlist', ...cookieArgs];
 
     const { stdout } = await execFileAsync(YT_DLP, args, { maxBuffer: 1024 * 1024 });
     const info = JSON.parse(stdout);
@@ -120,7 +122,8 @@ export async function playTrack(guildId: string, track: Track): Promise<void> {
   const queue = queues.get(guildId);
   if (!queue || !queue.connection) return;
 
-  const ytdlp = spawn(YT_DLP, [track.url, '-f', 'bestaudio', '-o', '-', '--no-playlist', '--quiet']);
+  const cookieArgs = COOKIES_PATH ? ['--cookies', COOKIES_PATH] : [];
+  const ytdlp = spawn(YT_DLP, [track.url, '-f', 'bestaudio', '-o', '-', '--no-playlist', '--quiet', ...cookieArgs]);
 
   const resource = createAudioResource(ytdlp.stdout as Readable, {
     inputType: StreamType.Arbitrary,
