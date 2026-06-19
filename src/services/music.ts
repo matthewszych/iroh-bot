@@ -23,6 +23,7 @@ const COOKIES_PATH = process.env.YT_COOKIES_PATH || '/app/cookies.txt';
 export interface Track {
   title: string;
   url: string;
+  streamUrl: string;
   duration: string;
   thumbnail: string;
   requestedBy: string;
@@ -113,6 +114,7 @@ export async function searchTrack(query: string): Promise<Track | null> {
     return {
       title: info.title ?? 'Unknown',
       url: info.webpage_url ?? info.url,
+      streamUrl: info.url ?? '',
       duration: info.duration_string ?? '0:00',
       thumbnail: info.thumbnail ?? '',
       requestedBy: '',
@@ -142,6 +144,7 @@ export async function searchPlaylist(url: string): Promise<Track[]> {
         tracks.push({
           title: info.title ?? 'Unknown',
           url: info.url ?? info.webpage_url ?? `https://www.youtube.com/watch?v=${info.id}`,
+          streamUrl: '',
           duration: info.duration_string ?? '0:00',
           thumbnail: info.thumbnail ?? info.thumbnails?.[0]?.url ?? '',
           requestedBy: '',
@@ -166,25 +169,32 @@ export async function playTrack(guildId: string, track: Track): Promise<void> {
     queue.idleTimeout = null;
   }
 
-  const authArgs = ['--cookies', COOKIES_PATH];
-  const ytdlp = spawn(YT_DLP, [
-    track.url,
-    '-f',
-    'bestaudio',
-    '-o',
-    '-',
-    '--no-playlist',
-    '--no-check-formats',
-    '--quiet',
-    ...authArgs,
-  ]);
+  let audioStreamUrl = track.streamUrl;
+  if (!audioStreamUrl) {
+    const resolved = await searchTrack(track.url);
+    if (!resolved) return;
+    audioStreamUrl = resolved.streamUrl;
+  }
 
-  const resource = createAudioResource(ytdlp.stdout as Readable, {
-    inputType: StreamType.Arbitrary,
+  const ffmpeg = spawn('ffmpeg', [
+    '-reconnect', '1',
+    '-reconnect_streamed', '1',
+    '-reconnect_delay_max', '5',
+    '-i', audioStreamUrl,
+    '-f', 'opus',
+    '-c:a', 'libopus',
+    '-ar', '48000',
+    '-ac', '2',
+    '-b:a', '96k',
+    'pipe:1',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  const resource = createAudioResource(ffmpeg.stdout as Readable, {
+    inputType: StreamType.OggOpus,
   });
 
-  ytdlp.stderr.on('data', (data) => {
-    logger.debug({ guildId }, `yt-dlp stderr: ${data}`);
+  ffmpeg.stderr.on('data', (data) => {
+    logger.debug({ guildId }, `ffmpeg stderr: ${data}`);
   });
 
   queue.current = track;
