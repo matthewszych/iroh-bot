@@ -34,9 +34,8 @@ const clearMode = process.argv.includes('--clear');
     const commandData = commands.map((cmd) => cmd.data.toJSON());
 
     if (guildId) {
-      await rest.put(Routes.applicationCommands(clientId), { body: [] });
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandData });
-      logger.info({ count: commandData.length, guildId }, 'Registered commands to guild (cleared global)');
+      logger.info({ count: commandData.length, guildId }, 'Registered commands to guild');
     } else {
       await rest.put(Routes.applicationCommands(clientId), { body: commandData });
       logger.info({ count: commandData.length }, 'Registered commands globally');
