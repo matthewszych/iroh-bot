@@ -93,9 +93,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const originalReply = interaction.reply.bind(interaction);
         const originalEditReply = interaction.editReply.bind(interaction);
         const originalFollowUp = interaction.followUp.bind(interaction);
+        const originalDeferReply = interaction.deferReply.bind(interaction);
 
         interaction.deferReply = (async () => {
-          return originalReply({ content: `🍵 Sent to <#${targetChannelId}>`, ephemeral: true });
+          await originalDeferReply({ ephemeral: true });
         }) as any;
 
         interaction.reply = (async (options: any) => {
@@ -107,7 +108,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await botChannel.send({ ...options, content: options.content ? `*${interaction.user.username} used /${interaction.commandName}:*\n${options.content}` : undefined });
           }
           if (!interaction.replied) {
-            return originalReply({ content: `🍵 Sent to <#${targetChannelId}>`, ephemeral: true });
+            return originalReply({ content: `🍵 Posted in <#${targetChannelId}>`, ephemeral: true });
+          } else {
+            await originalEditReply({ content: `🍵 Posted in <#${targetChannelId}>` });
           }
         }) as any;
 
@@ -117,7 +120,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           } else {
             await botChannel.send({ ...options, content: options.content ? `*${interaction.user.username} used /${interaction.commandName}:*\n${options.content}` : undefined });
           }
-          return originalEditReply({ content: `🍵 Sent to <#${targetChannelId}>` });
+          return originalEditReply({ content: `🍵 Posted in <#${targetChannelId}>` });
         }) as any;
 
         interaction.followUp = (async (options: any) => {
