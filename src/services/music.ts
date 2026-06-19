@@ -104,8 +104,8 @@ export async function searchTrack(query: string): Promise<Track | null> {
     const isUrl = query.startsWith('http://') || query.startsWith('https://');
     const authArgs = ['--cookies', COOKIES_PATH];
     const args = isUrl
-      ? [query, '--dump-json', '--no-playlist', ...authArgs]
-      : [`ytsearch1:${query}`, '--dump-json', '--no-playlist', ...authArgs];
+      ? [query, '--dump-json', '--no-playlist', '--no-check-formats', '-f', 'bestaudio', ...authArgs]
+      : [`ytsearch1:${query}`, '--dump-json', '--no-playlist', '--no-check-formats', '-f', 'bestaudio', ...authArgs];
 
     const { stdout } = await execFileAsync(YT_DLP, args, { maxBuffer: 1024 * 1024 });
     const info = JSON.parse(stdout);
@@ -121,6 +121,118 @@ export async function searchTrack(query: string): Promise<Track | null> {
     logger.error({ err: error, query }, 'yt-dlp search failed');
     return null;
   }
+}
+
+export async function searchAndPlayTrack(guildId: string, query: string, requestedBy: string): Promise<Track | null> {
+  const queue = queues.get(guildId);
+  if (!queue || !queue.connection) return null;
+
+  if (queue.idleTimeout) {
+    clearTimeout(queue.idleTimeout);
+    queue.idleTimeout = null;
+  }
+
+  const isUrl = query.startsWith('http://') || query.startsWith('https://');
+  const search = isUrl ? query : `ytsearch1:${query}`;
+  const authArgs = ['--cookies', COOKIES_PATH];
+
+  const args = [
+    search,
+    '-f',
+    'bestaudio',
+    '-o',
+    '-',
+    '--no-playlist',
+    '--no-check-formats',
+    '--quiet',
+    '--print',
+    '%(title)s\t%(webpage_url)s\t%(duration_string)s\t%(thumbnail)s',
+    ...authArgs,
+  ];
+
+  return new Promise((resolve) => {
+    const ytdlp = spawn(YT_DLP, args);
+    let resolved = false;
+
+    ytdlp.stderr.on('data', (data: Buffer) => {
+      const text = data.toString();
+      logger.debug({ guildId }, `yt-dlp stderr: ${text}`);
+    });
+
+    let metaBuffer = '';
+    let audioStarted = false;
+    const audioChunks: Buffer[] = [];
+
+    ytdlp.stdout.on('data', (data: Buffer) => {
+      if (!audioStarted) {
+        const text = data.toString('utf8');
+        const newlineIdx = text.indexOf('\n');
+        if (newlineIdx !== -1) {
+          metaBuffer += text.slice(0, newlineIdx);
+          audioStarted = true;
+
+          const parts = metaBuffer.split('\t');
+          const track: Track = {
+            title: parts[0] || 'Unknown',
+            url: parts[1] || query,
+            duration: parts[2] || '0:00',
+            thumbnail: parts[3] || '',
+            requestedBy,
+          };
+
+          const audioStart = data.indexOf(10) + 1;
+          if (audioStart < data.length) {
+            audioChunks.push(data.subarray(audioStart));
+          }
+
+          const audioStream = new Readable({
+            read() {},
+          });
+
+          for (const chunk of audioChunks) {
+            audioStream.push(chunk);
+          }
+
+          ytdlp.stdout.on('data', (chunk: Buffer) => {
+            audioStream.push(chunk);
+          });
+          ytdlp.stdout.on('end', () => {
+            audioStream.push(null);
+          });
+
+          const resource = createAudioResource(audioStream, {
+            inputType: StreamType.Arbitrary,
+          });
+
+          queue.current = track;
+          queue.playing = true;
+          queue.player.play(resource);
+          queue.connection!.subscribe(queue.player);
+
+          resolved = true;
+          resolve(track);
+        } else {
+          metaBuffer += text;
+        }
+      }
+    });
+
+    ytdlp.on('error', (err) => {
+      logger.error({ err, guildId, query }, 'yt-dlp searchAndPlay failed');
+      if (!resolved) {
+        resolved = true;
+        resolve(null);
+      }
+    });
+
+    ytdlp.on('close', (code) => {
+      if (!resolved) {
+        logger.error({ guildId, query, code }, 'yt-dlp searchAndPlay exited without producing audio');
+        resolved = true;
+        resolve(null);
+      }
+    });
+  });
 }
 
 export function isPlaylistUrl(url: string): boolean {
@@ -167,7 +279,17 @@ export async function playTrack(guildId: string, track: Track): Promise<void> {
   }
 
   const authArgs = ['--cookies', COOKIES_PATH];
-  const ytdlp = spawn(YT_DLP, [track.url, '-f', 'bestaudio', '-o', '-', '--no-playlist', '--quiet', ...authArgs]);
+  const ytdlp = spawn(YT_DLP, [
+    track.url,
+    '-f',
+    'bestaudio',
+    '-o',
+    '-',
+    '--no-playlist',
+    '--no-check-formats',
+    '--quiet',
+    ...authArgs,
+  ]);
 
   const resource = createAudioResource(ytdlp.stdout as Readable, {
     inputType: StreamType.Arbitrary,

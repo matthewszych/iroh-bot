@@ -19,6 +19,7 @@ A Discord bot inspired by Uncle Iroh from Avatar: The Last Airbender. Dispenses 
 - **🔁 /loop** — Toggle loop mode (off/track/queue)
 - **🎵 /nowplaying** — Show what's currently playing
 - **🗑️ /clear** — Clear the music queue
+- **🔀 /shuffle** — Shuffle the music queue
 - **Passive XP** — Earn XP by chatting (after choosing an element)
 - **Level-up announcements** — Iroh congratulates you on leveling up
 - **Auto-leave** — Bot leaves voice when no users remain
@@ -66,6 +67,12 @@ npm install
 
 ```bash
 npm run deploy
+```
+
+To clear duplicate commands (if commands appear twice in Discord):
+
+```bash
+npm run deploy -- --clear
 ```
 
 ### 6. Start the Bot
@@ -142,7 +149,8 @@ iroh-bot/
 │   │   ├── queue.ts          — /queue
 │   │   ├── nowplaying.ts     — /nowplaying
 │   │   ├── loop.ts           — /loop
-│   │   └── clear.ts          — /clear
+│   │   ├── clear.ts          — /clear
+│   │   └── shuffle.ts        — /shuffle
 │   ├── services/
 │   │   ├── wisdom.ts         — Curated Iroh quotes
 │   │   ├── leveling.ts       — XP, levels, ranks
@@ -158,6 +166,7 @@ iroh-bot/
 │       ├── constants.ts      — Types & element info
 │       └── logger.ts         — Pino logger
 ├── tests/                     — Vitest tests
+├── deploy.ps1                 — PowerShell deploy script
 ├── docker-compose.yml         — Local PostgreSQL
 ├── knexfile.ts                — Knex configuration
 ├── .env.example               — Environment template
@@ -208,6 +217,23 @@ docker logs -f iroh-bot
 ```
 
 ### Redeploy (after code changes)
+
+Use the PowerShell deploy script from your local machine:
+
+```powershell
+# Deploy code
+.\deploy.ps1
+
+# Deploy code + upload fresh cookies
+.\deploy.ps1 -Cookies
+
+# Upload cookies only (no rebuild)
+.\deploy.ps1 -Cookies -CodeOnly
+```
+
+Requires `DROPLET_IP` and `SSH_KEY_PATH` environment variables (set in `.env`).
+
+Or manually:
 
 ```bash
 cd ~/iroh-bot

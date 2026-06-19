@@ -14,6 +14,7 @@ import { queueCmd } from './queue';
 import { nowPlayingCmd } from './nowplaying';
 import { loopCmd } from './loop';
 import { clearCmd } from './clear';
+import { shuffleCmd } from './shuffle';
 
 const aiEnabled = process.env.ENABLE_AI === 'true';
 
@@ -33,4 +34,5 @@ export const commands: Command[] = [
   nowPlayingCmd,
   loopCmd,
   clearCmd,
+  shuffleCmd,
 ];

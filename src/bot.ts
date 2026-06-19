@@ -74,7 +74,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
           await interaction.reply(reply);
         }
       } catch {
-        /* expired */
+        /* interaction expired */
       }
     }
   }

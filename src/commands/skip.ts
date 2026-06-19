@@ -14,7 +14,7 @@ export const skipCmd: Command = {
     }
 
     const skipped = queue.current.title;
-    queue.player.stop(); // triggers Idle → plays next track
+    queue.player.stop();
     await interaction.reply(`⏭️ Skipped **${skipped}**.`);
   },
 };

@@ -60,18 +60,15 @@ export const playCmd: Command = {
       return;
     }
 
-    const track = await music.searchTrack(query);
-
-    if (!track) {
-      await interaction.editReply('I could not find that song. Perhaps try a different search?');
-      return;
-    }
-
-    track.requestedBy = interaction.user.username;
-
     const isPlaying = queue.playing && queue.player.state.status !== AudioPlayerStatus.Idle;
 
     if (isPlaying) {
+      const track = await music.searchTrack(query);
+      if (!track) {
+        await interaction.editReply('I could not find that song. Perhaps try a different search?');
+        return;
+      }
+      track.requestedBy = interaction.user.username;
       queue.tracks.push(track);
       const embed = new EmbedBuilder()
         .setColor(0x8b4513)
@@ -81,7 +78,11 @@ export const playCmd: Command = {
         .setFooter({ text: 'Patience brings all things in time.' });
       await interaction.editReply({ embeds: [embed] });
     } else {
-      await music.playTrack(interaction.guildId!, track);
+      const track = await music.searchAndPlayTrack(interaction.guildId!, query, interaction.user.username);
+      if (!track) {
+        await interaction.editReply('I could not find that song. Perhaps try a different search?');
+        return;
+      }
       const embed = new EmbedBuilder()
         .setColor(0x8b4513)
         .setTitle('🎵 Now Playing')
