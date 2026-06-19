@@ -176,18 +176,31 @@ export async function playTrack(guildId: string, track: Track): Promise<void> {
     audioStreamUrl = resolved.streamUrl;
   }
 
-  const ffmpeg = spawn('ffmpeg', [
-    '-reconnect', '1',
-    '-reconnect_streamed', '1',
-    '-reconnect_delay_max', '5',
-    '-i', audioStreamUrl,
-    '-f', 'opus',
-    '-c:a', 'libopus',
-    '-ar', '48000',
-    '-ac', '2',
-    '-b:a', '96k',
-    'pipe:1',
-  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  const ffmpeg = spawn(
+    'ffmpeg',
+    [
+      '-reconnect',
+      '1',
+      '-reconnect_streamed',
+      '1',
+      '-reconnect_delay_max',
+      '5',
+      '-i',
+      audioStreamUrl,
+      '-f',
+      'opus',
+      '-c:a',
+      'libopus',
+      '-ar',
+      '48000',
+      '-ac',
+      '2',
+      '-b:a',
+      '96k',
+      'pipe:1',
+    ],
+    { stdio: ['ignore', 'pipe', 'pipe'] },
+  );
 
   const resource = createAudioResource(ffmpeg.stdout as Readable, {
     inputType: StreamType.OggOpus,

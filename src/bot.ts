@@ -10,7 +10,7 @@ if (process.env.FFMPEG_PATH) {
   process.env.PATH = `${ffmpegDir};${process.env.PATH}`;
 }
 
-import { Client, GatewayIntentBits, Events, EmbedBuilder, TextChannel, MessageFlags } from 'discord.js';
+import { Client, GatewayIntentBits, Events, EmbedBuilder, TextChannel } from 'discord.js';
 import { commands } from './commands';
 import { XP_PER_MESSAGE, XP_COOLDOWN_MS, checkLevelUp, getRank, getLevelUpMessage } from './services/leveling';
 import { Element, ELEMENT_INFO } from './shared/constants';
@@ -84,7 +84,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (!targetChannelId || interaction.channelId === targetChannelId) {
         await command.execute(interaction);
       } else {
-        const botChannel = await interaction.guild?.channels.fetch(targetChannelId).catch(() => null) as TextChannel | null;
+        const botChannel = (await interaction.guild?.channels
+          .fetch(targetChannelId)
+          .catch(() => null)) as TextChannel | null;
         if (!botChannel) {
           await command.execute(interaction);
           return;
@@ -97,33 +99,47 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
         interaction.deferReply = (async () => {
           await originalDeferReply({ flags: ['Ephemeral' as const] });
-        }) as any;
+        }) as never;
 
-        interaction.reply = (async (options: any) => {
+        interaction.reply = (async (options: string | Record<string, unknown>) => {
           if (typeof options === 'string') {
-            await botChannel.send({ content: `*${interaction.user.username} used /${interaction.commandName}:*\n${options}` });
+            await botChannel.send({
+              content: `*${interaction.user.username} used /${interaction.commandName}:*\n${options}`,
+            });
           } else if (options.ephemeral) {
             return originalReply(options);
           } else {
-            await botChannel.send({ ...options, content: options.content ? `*${interaction.user.username} used /${interaction.commandName}:*\n${options.content}` : undefined });
+            await botChannel.send({
+              ...options,
+              content: options.content
+                ? `*${interaction.user.username} used /${interaction.commandName}:*\n${options.content}`
+                : undefined,
+            });
           }
           if (!interaction.replied) {
             return originalReply({ content: `🍵 Posted in <#${targetChannelId}>`, flags: ['Ephemeral' as const] });
           } else {
             await originalEditReply({ content: `🍵 Posted in <#${targetChannelId}>` });
           }
-        }) as any;
+        }) as never;
 
-        interaction.editReply = (async (options: any) => {
+        interaction.editReply = (async (options: string | Record<string, unknown>) => {
           if (typeof options === 'string') {
-            await botChannel.send({ content: `*${interaction.user.username} used /${interaction.commandName}:*\n${options}` });
+            await botChannel.send({
+              content: `*${interaction.user.username} used /${interaction.commandName}:*\n${options}`,
+            });
           } else {
-            await botChannel.send({ ...options, content: options.content ? `*${interaction.user.username} used /${interaction.commandName}:*\n${options.content}` : undefined });
+            await botChannel.send({
+              ...options,
+              content: options.content
+                ? `*${interaction.user.username} used /${interaction.commandName}:*\n${options.content}`
+                : undefined,
+            });
           }
           return originalEditReply({ content: `🍵 Posted in <#${targetChannelId}>` });
-        }) as any;
+        }) as never;
 
-        interaction.followUp = (async (options: any) => {
+        interaction.followUp = (async (options: string | Record<string, unknown>) => {
           if (typeof options === 'string') {
             await botChannel.send(options);
           } else if (options.ephemeral) {
@@ -131,14 +147,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
           } else {
             await botChannel.send(options);
           }
-        }) as any;
+        }) as never;
 
         await command.execute(interaction);
       }
     } catch (error) {
       logger.error({ err: error, command: interaction.commandName }, 'Command execution failed');
       try {
-        const reply = { content: 'Even Uncle Iroh makes mistakes sometimes. Please try again.', flags: ['Ephemeral' as const] };
+        const reply = {
+          content: 'Even Uncle Iroh makes mistakes sometimes. Please try again.',
+          flags: ['Ephemeral' as const],
+        };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(reply);
         } else {

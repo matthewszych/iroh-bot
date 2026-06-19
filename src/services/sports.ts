@@ -20,6 +20,14 @@ const LEAGUE_EMOJI: Record<League, string> = {
   ufc: '🥊',
 };
 
+const LEAGUE_COLOR: Record<League, number> = {
+  nfl: 0x013369,
+  nba: 0xc9082a,
+  mlb: 0x002d72,
+  nhl: 0x000000,
+  ufc: 0xd20a0a,
+};
+
 export interface GameScore {
   homeTeam: string;
   awayTeam: string;
@@ -41,16 +49,56 @@ export function getLeagueEmoji(league: League): string {
   return LEAGUE_EMOJI[league];
 }
 
+export function getLeagueColor(league: League): number {
+  return LEAGUE_COLOR[league];
+}
+
+interface EspnCompetitor {
+  homeAway: string;
+  score?: string;
+  team?: { abbreviation?: string };
+}
+
+interface EspnEvent {
+  competitions?: Array<{ competitors?: EspnCompetitor[] }>;
+  status?: { type?: { shortDetail?: string; name?: string } };
+  date?: string;
+}
+
+interface EspnScoreboardResponse {
+  events?: EspnEvent[];
+}
+
+interface EspnStat {
+  name: string;
+  displayValue?: string;
+}
+
+interface EspnStandingsEntry {
+  team?: { abbreviation?: string };
+  stats?: EspnStat[];
+}
+
+interface EspnStandingsGroup {
+  name?: string;
+  children?: EspnStandingsGroup[];
+  standings?: { entries?: EspnStandingsEntry[] };
+}
+
+interface EspnStandingsResponse {
+  children?: EspnStandingsGroup[];
+}
+
 export async function getScores(league: League): Promise<GameScore[]> {
   try {
     const res = await fetch(`${ESPN_BASE}/${LEAGUE_PATHS[league]}/scoreboard`);
-    const data: any = await res.json();
+    const data = (await res.json()) as EspnScoreboardResponse;
     const events = data.events ?? [];
 
-    return events.map((event: any) => {
+    return events.map((event) => {
       const competition = event.competitions?.[0];
-      const home = competition?.competitors?.find((c: any) => c.homeAway === 'home');
-      const away = competition?.competitors?.find((c: any) => c.homeAway === 'away');
+      const home = competition?.competitors?.find((c) => c.homeAway === 'home');
+      const away = competition?.competitors?.find((c) => c.homeAway === 'away');
 
       return {
         homeTeam: home?.team?.abbreviation ?? 'TBD',
@@ -70,7 +118,7 @@ export async function getScores(league: League): Promise<GameScore[]> {
 export async function getStandings(league: League): Promise<StandingsEntry[]> {
   try {
     const res = await fetch(`https://site.api.espn.com/apis/v2/sports/${LEAGUE_PATHS[league]}/standings`);
-    const data: any = await res.json();
+    const data = (await res.json()) as EspnStandingsResponse;
     const entries: StandingsEntry[] = [];
 
     for (const group of data.children ?? []) {
@@ -80,8 +128,8 @@ export async function getStandings(league: League): Promise<StandingsEntry[]> {
         for (const entry of child.standings?.entries ?? []) {
           const team = entry.team?.abbreviation ?? 'TBD';
           const stats = entry.stats ?? [];
-          const wins = stats.find((s: any) => s.name === 'wins')?.displayValue ?? '0';
-          const losses = stats.find((s: any) => s.name === 'losses')?.displayValue ?? '0';
+          const wins = stats.find((s) => s.name === 'wins')?.displayValue ?? '0';
+          const losses = stats.find((s) => s.name === 'losses')?.displayValue ?? '0';
           entries.push({
             team,
             wins,
@@ -106,16 +154,16 @@ export async function getSchedule(league: League, days = 7): Promise<GameScore[]
     const dateStr = `${now.toISOString().slice(0, 10).replace(/-/g, '')}-${end.toISOString().slice(0, 10).replace(/-/g, '')}`;
 
     const res = await fetch(`${ESPN_BASE}/${LEAGUE_PATHS[league]}/scoreboard?dates=${dateStr}`);
-    const data: any = await res.json();
+    const data = (await res.json()) as EspnScoreboardResponse;
     const events = data.events ?? [];
 
     return events
-      .filter((event: any) => event.status?.type?.name === 'STATUS_SCHEDULED')
+      .filter((event) => event.status?.type?.name === 'STATUS_SCHEDULED')
       .slice(0, 10)
-      .map((event: any) => {
+      .map((event) => {
         const competition = event.competitions?.[0];
-        const home = competition?.competitors?.find((c: any) => c.homeAway === 'home');
-        const away = competition?.competitors?.find((c: any) => c.homeAway === 'away');
+        const home = competition?.competitors?.find((c) => c.homeAway === 'home');
+        const away = competition?.competitors?.find((c) => c.homeAway === 'away');
 
         return {
           homeTeam: home?.team?.abbreviation ?? 'TBD',

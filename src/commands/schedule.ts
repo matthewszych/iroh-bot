@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { Command } from '../shared/constants';
-import { getSchedule, getLeagueEmoji, League } from '../services/sports';
+import { getSchedule, getLeagueEmoji, getLeagueColor, League } from '../services/sports';
 
 export const scheduleCmd: Command = {
   data: new SlashCommandBuilder()
@@ -36,11 +36,11 @@ export const scheduleCmd: Command = {
       const date = new Date(g.startTime);
       const dateStr = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
       const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      return `**${g.awayTeam}** @ **${g.homeTeam}** — ${dateStr} ${timeStr}`;
+      return `\`${g.awayTeam.padEnd(4)} @ ${g.homeTeam.padEnd(4)}\` ${dateStr} • ${timeStr}`;
     });
 
     const embed = new EmbedBuilder()
-      .setColor(0x8b4513)
+      .setColor(getLeagueColor(league))
       .setTitle(`${emoji} ${league.toUpperCase()} Upcoming Games`)
       .setDescription(lines.join('\n'))
       .setFooter({ text: 'Data from ESPN' })

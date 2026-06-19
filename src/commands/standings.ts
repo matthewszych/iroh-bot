@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder, ChatInputCommandInteraction } from 'discord.js';
 import { Command } from '../shared/constants';
-import { getStandings, getLeagueEmoji, League } from '../services/sports';
+import { getStandings, getLeagueEmoji, getLeagueColor, League } from '../services/sports';
 
 export const standingsCmd: Command = {
   data: new SlashCommandBuilder()
@@ -41,16 +41,18 @@ export const standingsCmd: Command = {
 
     const sections: string[] = [];
     for (const [division, teams] of grouped) {
-      const lines = teams
-        .slice(0, 8)
-        .map((t) => `\`${t.wins}-${t.losses}\` ${t.team}`);
+      const lines = teams.slice(0, 8).map((t, i) => {
+        const rank = String(i + 1).padStart(2);
+        const record = `${t.wins}-${t.losses}`;
+        return `\`${rank}. ${t.team.padEnd(4)} ${record.padStart(5)}\``;
+      });
       sections.push(`**${division}**\n${lines.join('\n')}`);
     }
 
     const description = sections.slice(0, 8).join('\n\n');
 
     const embed = new EmbedBuilder()
-      .setColor(0x8b4513)
+      .setColor(getLeagueColor(league))
       .setTitle(`${emoji} ${league.toUpperCase()} Standings`)
       .setDescription(description.slice(0, 4096))
       .setFooter({ text: 'Data from ESPN' })

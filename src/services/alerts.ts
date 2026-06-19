@@ -7,11 +7,11 @@ const LEAGUES: League[] = ['nfl', 'nba', 'mlb', 'nhl'];
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
 const SEASON_MONTHS: Record<League, [number, number]> = {
-  nfl: [8, 2],   // Aug–Feb (includes preseason)
-  nba: [10, 6],  // Oct–Jun
-  mlb: [2, 10],  // Feb–Oct (includes spring training)
-  nhl: [9, 6],   // Sep–Jun (includes preseason)
-  ufc: [1, 12],  // year-round
+  nfl: [8, 2], // Aug–Feb (includes preseason)
+  nba: [10, 6], // Oct–Jun
+  mlb: [2, 10], // Feb–Oct (includes spring training)
+  nhl: [9, 6], // Sep–Jun (includes preseason)
+  ufc: [1, 12], // year-round
 };
 
 function isInSeason(league: League): boolean {
@@ -50,7 +50,7 @@ function scheduleDaily(hour: number, minute: number, fn: () => void): void {
   }, delay);
 }
 
-async function checkGames(client: Client, channelId: string): Promise<void> {
+async function checkGames(client: Client, _channelId: string): Promise<void> {
   for (const league of LEAGUES) {
     if (!isInSeason(league)) continue;
     try {
@@ -64,14 +64,12 @@ async function checkGames(client: Client, channelId: string): Promise<void> {
       if (upcomingSoon.length === 0) continue;
 
       const guilds = client.guilds.cache;
-      for (const [guildId, guild] of guilds) {
+      for (const [guildId] of guilds) {
         const favs = await getFavoriteTeamsByLeague(guildId, league);
         if (favs.length === 0) continue;
 
         const favTeams = new Set(favs.map((f) => f.team));
-        const relevantGames = upcomingSoon.filter(
-          (g) => favTeams.has(g.homeTeam) || favTeams.has(g.awayTeam),
-        );
+        const relevantGames = upcomingSoon.filter((g) => favTeams.has(g.homeTeam) || favTeams.has(g.awayTeam));
 
         if (relevantGames.length === 0) continue;
 
@@ -82,16 +80,12 @@ async function checkGames(client: Client, channelId: string): Promise<void> {
         for (const fav of usersToNotify) {
           try {
             const user = await client.users.fetch(fav.user_id);
-            const game = relevantGames.find(
-              (g) => g.homeTeam === fav.team || g.awayTeam === fav.team,
-            )!;
+            const game = relevantGames.find((g) => g.homeTeam === fav.team || g.awayTeam === fav.team)!;
             const emoji = getLeagueEmoji(league);
             const start = new Date(game.startTime);
             const timeStr = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-            await user.send(
-              `${emoji} **${game.awayTeam} @ ${game.homeTeam}** starts at ${timeStr} today!`,
-            );
+            await user.send(`${emoji} **${game.awayTeam} @ ${game.homeTeam}** starts at ${timeStr} today!`);
           } catch {
             /* user has DMs disabled */
           }
@@ -129,7 +123,7 @@ async function postDailyGames(client: Client, channelId: string): Promise<void> 
 
     if (allGames.length === 0) return;
 
-    const channel = await client.channels.fetch(channelId) as TextChannel | null;
+    const channel = (await client.channels.fetch(channelId)) as TextChannel | null;
     if (!channel) return;
 
     const embed = new EmbedBuilder()
