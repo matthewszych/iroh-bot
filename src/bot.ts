@@ -10,7 +10,7 @@ if (process.env.FFMPEG_PATH) {
   process.env.PATH = `${ffmpegDir};${process.env.PATH}`;
 }
 
-import { Client, GatewayIntentBits, Events, EmbedBuilder, TextChannel } from 'discord.js';
+import { Client, GatewayIntentBits, Events, EmbedBuilder, TextChannel, MessageFlags } from 'discord.js';
 import { commands } from './commands';
 import { XP_PER_MESSAGE, XP_COOLDOWN_MS, checkLevelUp, getRank, getLevelUpMessage } from './services/leveling';
 import { Element, ELEMENT_INFO } from './shared/constants';
@@ -96,7 +96,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         const originalDeferReply = interaction.deferReply.bind(interaction);
 
         interaction.deferReply = (async () => {
-          await originalDeferReply({ ephemeral: true });
+          await originalDeferReply({ flags: ['Ephemeral' as const] });
         }) as any;
 
         interaction.reply = (async (options: any) => {
@@ -108,7 +108,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
             await botChannel.send({ ...options, content: options.content ? `*${interaction.user.username} used /${interaction.commandName}:*\n${options.content}` : undefined });
           }
           if (!interaction.replied) {
-            return originalReply({ content: `🍵 Posted in <#${targetChannelId}>`, ephemeral: true });
+            return originalReply({ content: `🍵 Posted in <#${targetChannelId}>`, flags: ['Ephemeral' as const] });
           } else {
             await originalEditReply({ content: `🍵 Posted in <#${targetChannelId}>` });
           }
@@ -138,7 +138,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     } catch (error) {
       logger.error({ err: error, command: interaction.commandName }, 'Command execution failed');
       try {
-        const reply = { content: 'Even Uncle Iroh makes mistakes sometimes. Please try again.', ephemeral: true };
+        const reply = { content: 'Even Uncle Iroh makes mistakes sometimes. Please try again.', flags: ['Ephemeral' as const] };
         if (interaction.replied || interaction.deferred) {
           await interaction.followUp(reply);
         } else {

@@ -33,7 +33,13 @@ export const playCmd: Command = {
       queue.connection = await music.connectToChannel(voiceChannel);
     }
 
-    queue.textChannel = interaction.channel as TextChannel;
+    const musicChannelId = process.env.CHANNEL_MUSIC;
+    if (musicChannelId && interaction.channelId !== musicChannelId) {
+      const musicChannel = await interaction.client.channels.fetch(musicChannelId);
+      if (musicChannel?.isTextBased()) queue.textChannel = musicChannel as TextChannel;
+    } else {
+      queue.textChannel = interaction.channel as TextChannel;
+    }
 
     if (music.isPlaylistUrl(query)) {
       const tracks = await music.searchPlaylist(query);
