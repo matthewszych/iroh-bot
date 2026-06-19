@@ -6,6 +6,21 @@ import { logger } from '../shared/logger';
 const LEAGUES: League[] = ['nfl', 'nba', 'mlb', 'nhl'];
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
+const SEASON_MONTHS: Record<League, [number, number]> = {
+  nfl: [8, 2],   // Aug–Feb (includes preseason)
+  nba: [10, 6],  // Oct–Jun
+  mlb: [2, 10],  // Feb–Oct (includes spring training)
+  nhl: [9, 6],   // Sep–Jun (includes preseason)
+  ufc: [1, 12],  // year-round
+};
+
+function isInSeason(league: League): boolean {
+  const month = new Date().getMonth() + 1;
+  const [start, end] = SEASON_MONTHS[league];
+  if (start <= end) return month >= start && month <= end;
+  return month >= start || month <= end;
+}
+
 export function startGameAlerts(client: Client): void {
   const sportsChannelId = process.env.CHANNEL_SPORTS;
   if (!sportsChannelId) return;
@@ -37,6 +52,7 @@ function scheduleDaily(hour: number, minute: number, fn: () => void): void {
 
 async function checkGames(client: Client, channelId: string): Promise<void> {
   for (const league of LEAGUES) {
+    if (!isInSeason(league)) continue;
     try {
       const scores = await getScores(league);
       const upcomingSoon = scores.filter((g) => {
@@ -92,6 +108,7 @@ async function postDailyGames(client: Client, channelId: string): Promise<void> 
     const allGames: string[] = [];
 
     for (const league of LEAGUES) {
+      if (!isInSeason(league)) continue;
       const scores = await getScores(league);
       const todayGames = scores.filter((g) => {
         const start = new Date(g.startTime);

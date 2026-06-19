@@ -69,7 +69,7 @@ export async function getScores(league: League): Promise<GameScore[]> {
 
 export async function getStandings(league: League): Promise<StandingsEntry[]> {
   try {
-    const res = await fetch(`${ESPN_BASE}/${LEAGUE_PATHS[league]}/standings`);
+    const res = await fetch(`https://site.api.espn.com/apis/v2/sports/${LEAGUE_PATHS[league]}/standings`);
     const data: any = await res.json();
     const entries: StandingsEntry[] = [];
 
