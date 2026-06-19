@@ -1,28 +1,54 @@
 # 🍵 Uncle Iroh Bot
 
-A Discord bot inspired by Uncle Iroh from Avatar: The Last Airbender. Dispenses wisdom, lets users choose their bending element, features a leveling system, and plays music in voice channels.
+A Discord bot inspired by Uncle Iroh from Avatar: The Last Airbender. Dispenses wisdom, lets users choose their bending element, features a leveling system, plays music in voice channels, and provides live sports updates.
 
 ## Features
 
-- **🍵 /wisdom** — Receive a piece of Iroh's wisdom (element-specific if you've chosen one)
-- **🌊🔥🪨💨 /choose-element** — Pick your bending element (Fire, Water, Earth, Air)
-- **📊 /profile** — View your bender profile, rank, level, and XP progress
-- **🏆 /leaderboard** — See the top benders in your server
-- **☕ /tea** — Get a tea recommendation from Iroh
-- **💬 /iroh** — Just chat with Uncle Iroh
-- **🤖 /ask-iroh** — AI-generated responses (feature-flagged, requires OpenAI key)
-- **🎵 /play** — Play a song from YouTube (URL or search)
-- **⏸️ /pause** — Pause/resume playback
-- **⏭️ /skip** — Skip the current track
-- **⏹️ /stop** — Stop playback and disconnect
-- **🎶 /queue** — View the current music queue
-- **🔁 /loop** — Toggle loop mode (off/track/queue)
-- **🎵 /nowplaying** — Show what's currently playing
-- **🗑️ /clear** — Clear the music queue
-- **🔀 /shuffle** — Shuffle the music queue
+### 🍵 General
+- **`/wisdom`** — Receive a piece of Iroh's wisdom (element-specific if you've chosen one)
+- **`/choose-element`** — Pick your bending element (Fire, Water, Earth, Air)
+- **`/profile`** — View your bender profile, rank, level, and XP progress
+- **`/leaderboard`** — See the top benders in your server
+- **`/tea`** — Get a tea recommendation from Iroh
+- **`/iroh`** — Just chat with Uncle Iroh
+- **`/ask-iroh`** — AI-generated responses (feature-flagged, requires OpenAI key)
+
+### 🎵 Music
+- **`/play`** — Play a song from YouTube (URL or search)
+- **`/pause`** — Pause/resume playback
+- **`/skip`** — Skip the current track
+- **`/stop`** — Stop playback and disconnect
+- **`/queue`** — View the current music queue
+- **`/nowplaying`** — Show what's currently playing
+- **`/loop`** — Toggle loop mode (off/track/queue)
+- **`/clear`** — Clear the music queue
+- **`/shuffle`** — Shuffle the music queue
+
+### 🏈 Sports
+- **`/scores <league>`** — Today's live scores and results
+- **`/standings <league>`** — Current standings by division
+- **`/schedule <league>`** — Upcoming games (next 7 days)
+- **`/favteam [league] [team]`** — Set/view your favorite team (get game day DMs)
+- **`/poll <question> <options>`** — Create a reaction poll
+- Supported leagues: NFL, NBA, MLB, NHL, UFC
+
+### 🤖 Automated
 - **Passive XP** — Earn XP by chatting (after choosing an element)
 - **Level-up announcements** — Iroh congratulates you on leveling up
 - **Auto-leave** — Bot leaves voice when no users remain
+- **Game day alerts** — DMs you ~1 hour before your favorite team plays
+- **Daily games post** — Posts all of today's games to #sports at 8am
+
+### 📺 Channel Routing
+
+Commands are automatically routed to designated channels:
+| Channel | Commands |
+|---------|----------|
+| Music | play, pause, skip, stop, queue, nowplaying, loop, clear, shuffle |
+| Sports | scores, standings, schedule, favteam, poll |
+| Bot | wisdom, profile, leaderboard, tea, iroh, ask-iroh, choose-element |
+
+If used outside the designated channel, the bot replies ephemerally and sends output to the correct channel.
 
 ## Prerequisites
 
@@ -150,17 +176,25 @@ iroh-bot/
 │   │   ├── nowplaying.ts     — /nowplaying
 │   │   ├── loop.ts           — /loop
 │   │   ├── clear.ts          — /clear
-│   │   └── shuffle.ts        — /shuffle
+│   │   ├── shuffle.ts        — /shuffle
+│   │   ├── scores.ts         — /scores
+│   │   ├── standings.ts      — /standings
+│   │   ├── schedule.ts       — /schedule
+│   │   ├── favteam.ts        — /favteam
+│   │   └── poll.ts           — /poll
 │   ├── services/
 │   │   ├── wisdom.ts         — Curated Iroh quotes
 │   │   ├── leveling.ts       — XP, levels, ranks
 │   │   ├── music.ts          — yt-dlp music player
-│   │   └── ai.ts             — OpenAI integration
+│   │   ├── ai.ts             — OpenAI integration
+│   │   ├── sports.ts         — ESPN sports data
+│   │   └── alerts.ts         — Game day alerts & daily posts
 │   ├── db/
 │   │   ├── connection.ts     — Knex instance
 │   │   ├── index.ts          — Barrel export
 │   │   ├── users.ts          — User queries
 │   │   ├── wisdom-log.ts     — Wisdom log queries
+│   │   ├── favorite-teams.ts — Favorite team queries
 │   │   └── migrations/       — Knex migration files
 │   └── shared/
 │       ├── constants.ts      — Types & element info
@@ -198,10 +232,14 @@ cd iroh-bot
 cat > .env.prod << 'EOF'
 DISCORD_TOKEN=your_token
 CLIENT_ID=your_client_id
+GUILD_ID=your_guild_id
 DATABASE_URL=your_postgres_connection_string
 ENABLE_AI=false
 LOG_LEVEL=info
 NODE_ENV=production
+CHANNEL_MUSIC=your_music_channel_id
+CHANNEL_SPORTS=your_sports_channel_id
+CHANNEL_BOT=your_bot_channel_id
 EOF
 
 # 5. (Optional) Add YouTube cookies for music

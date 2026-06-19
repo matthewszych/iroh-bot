@@ -15,6 +15,11 @@ import { nowPlayingCmd } from './nowplaying';
 import { loopCmd } from './loop';
 import { clearCmd } from './clear';
 import { shuffleCmd } from './shuffle';
+import { scoresCmd } from './scores';
+import { standingsCmd } from './standings';
+import { scheduleCmd } from './schedule';
+import { favteamCmd } from './favteam';
+import { pollCmd } from './poll';
 
 const aiEnabled = process.env.ENABLE_AI === 'true';
 
@@ -35,4 +40,9 @@ export const commands: Command[] = [
   loopCmd,
   clearCmd,
   shuffleCmd,
+  scoresCmd,
+  standingsCmd,
+  scheduleCmd,
+  favteamCmd,
+  pollCmd,
 ];
